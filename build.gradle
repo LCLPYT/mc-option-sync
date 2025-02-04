@@ -6,8 +6,8 @@ plugins {
 
 Properties props = buildUtils.loadProperties('publish.properties')  // will be empty, if the file is missing
 
-version = buildUtils.gitVersion()  // determine project version from the latest git tag on the current branch
 group = project.maven_group
+version = project.mod_version
 
 base {
     archivesName = project.archives_base_name
@@ -30,29 +30,13 @@ loom {
     }
 }
 
-fabricApi {
-    configureDataGeneration()
-}
-
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-
-//// if you want to test your code, choose either:
-//// - plain junit-jupiter (default):
-//    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
-//    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
-//// - or fabric-loader junit, if you use Minecraft classes in your tests
-//    testImplementation "net.fabricmc:fabric-loader-junit:${project.loader_version}"
 }
-
-// required when using tests
-//test {
-//    useJUnitPlatform()
-//}
 
 processResources {
 	inputs.property "version", project.version
@@ -89,8 +73,8 @@ publishing {
             from components.java
 
             pom {
-                name = 'Test Mod'
-                description = 'This is an example description! Tell everyone what your mod is about!'
+                name = 'mc-option-sync'
+                description = 'Sync your options throughout multiple instances of the game.'
             }
         }
     }
