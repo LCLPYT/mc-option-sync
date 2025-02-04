@@ -15,8 +15,8 @@
 	"icon": "assets/mc-option-sync/icon.png",
 	"environment": "*",
 	"entrypoints": {
-		"main": [
-			"work.lclpnet.opt_sync.OptSyncInit"
+		"preLaunch": [
+			"work.lclpnet.opt_sync.OptSyncEntrypoint"
 		]
 	},
 	"mixins": [],
