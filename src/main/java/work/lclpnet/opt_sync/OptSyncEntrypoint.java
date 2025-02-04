@@ -13,6 +13,9 @@ public class OptSyncEntrypoint implements PreLaunchEntrypoint {
 
 	@Override
 	public void onPreLaunch() {
-		new OptionSync(OptionStorage.get(), LOGGER).bootstrap();
+		var storage = new OptionStorage(OptionStorage.getDataDir(), LOGGER);
+		var moduleProvider = new FabricModuleProvider();
+
+		new OptionSync(storage, moduleProvider, LOGGER).bootstrap();
     }
 }

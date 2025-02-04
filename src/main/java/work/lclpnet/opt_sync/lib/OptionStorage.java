@@ -2,33 +2,85 @@ package work.lclpnet.opt_sync.lib;
 
 import org.jetbrains.annotations.Blocking;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
 
 import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 
 import static work.lclpnet.opt_sync.OptSyncEntrypoint.MOD_ID;
 
 public class OptionStorage {
 
-    private final @NotNull Path dir;
+    private final @NotNull Path baseDir;
+    private final Logger logger;
 
-    public OptionStorage(@NotNull Path dir) {
-        this.dir = dir;
+    public OptionStorage(@NotNull Path baseDir, Logger logger) {
+        this.baseDir = baseDir;
+        this.logger = logger;
     }
 
     @Blocking
     public void init() throws IOException {
-        if (Files.exists(dir)) return;
+        if (Files.exists(baseDir)) return;
 
-        Files.createDirectories(dir);
+        Files.createDirectories(baseDir);
     }
 
-    public static OptionStorage get() {
-        return Holder.instance;
+    @Blocking
+    public void pull(Module module) throws IOException {
+        Path dir = baseDir.resolve(module.modulePath()).resolve(module.version().toString());
+
+        if (Files.exists(dir)) {
+            pullDir(module, dir);
+        } else {
+            logger.debug("No data to pull for module {}", module);
+        }
     }
 
-    private static @NotNull Path getDataDir() {
+    @Blocking
+    private void pullDir(Module module, Path dir) throws IOException {
+        try (var fileTree = Files.walk(dir)) {
+            fileTree.filter(Files::isRegularFile)
+                    .forEach(file -> {
+                        try {
+                            pullFile(module, dir, file);
+                        } catch (Exception e) {
+                            logger.error("Failed to pull file {} from module {}", dir.relativize(file), module);
+                        }
+                    });
+        }
+    }
+
+    private void pullFile(Module module, Path root, Path source) throws IOException {
+        Path rel = root.relativize(source);
+        Path target = module.filePath().resolve(rel);
+
+        if (source.toAbsolutePath().equals(target.toAbsolutePath())) {
+            throw new IllegalStateException("Source and target files are the same: " + source.toAbsolutePath());
+        }
+
+        Path dir = target.getParent();
+
+        if (dir != null && !Files.exists(dir)) {
+            Files.createDirectories(dir);
+        }
+
+        logger.debug("Pulling {} -> {}", source, target);
+
+        try (var srcChannel = FileChannel.open(source, StandardOpenOption.READ);
+             var dstChannel = FileChannel.open(target, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+             FileLock ignored = srcChannel.lock(0, Long.MAX_VALUE, true);
+             FileLock ignored1 = dstChannel.lock()) {
+
+            srcChannel.transferTo(0, srcChannel.size(), dstChannel);
+        }
+    }
+
+    public static @NotNull Path getDataDir() {
         Path appDataPath = getOsDataDir();
 
         return appDataPath.resolve(MOD_ID);
@@ -62,9 +114,5 @@ public class OptionStorage {
         }
 
         return Path.of(xdgDataHome);
-    }
-
-    private static class Holder {
-        private static final OptionStorage instance = new OptionStorage(getDataDir());
     }
 }
