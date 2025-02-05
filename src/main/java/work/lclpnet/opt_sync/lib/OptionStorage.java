@@ -3,6 +3,8 @@ package work.lclpnet.opt_sync.lib;
 import org.jetbrains.annotations.Blocking;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
+import work.lclpnet.kibu.config.ConfigManager;
+import work.lclpnet.opt_sync.lib.cfg.ModuleConfig;
 
 import java.io.IOException;
 import java.nio.channels.FileChannel;
@@ -32,7 +34,8 @@ public class OptionStorage {
 
     @Blocking
     public void pull(Module module) throws IOException {
-        Path dir = baseDir.resolve(module.modulePath()).resolve(module.version().toString());
+        Path moduleDir = baseDir.resolve(module.modulePath());
+        Path dir = moduleDir.resolve(module.version().toString());
 
         if (Files.exists(dir)) {
             pullDir(module, dir);
@@ -41,15 +44,35 @@ public class OptionStorage {
         }
     }
 
+    private @NotNull ModuleConfig readModuleConfig(Module module) {
+        Path moduleDir = baseDir.resolve(module.modulePath());
+        Path moduleCfgDir = moduleDir.resolve("module.toml");
+
+        ModuleConfig cfg = module.createConfig();
+
+        try (var manager = new ConfigManager<>(moduleCfgDir, cfg)) {
+            manager.load();
+
+            return manager.config();
+        } catch (Throwable t) {
+            logger.error("Failed to load module config", t);
+            return cfg;
+        }
+    }
+
     @Blocking
     private void pullDir(Module module, Path dir) throws IOException {
+        ModuleConfig config = readModuleConfig(module);
+        FileMatcher matcher = FileMatcher.of(config, logger);
+
         try (var fileTree = Files.walk(dir)) {
-            fileTree.filter(Files::isRegularFile)
+            fileTree.filter(matcher)
+                    .filter(Files::isRegularFile)
                     .forEach(file -> {
                         try {
                             pullFile(module, dir, file);
                         } catch (Exception e) {
-                            logger.error("Failed to pull file {} from module {}", dir.relativize(file), module);
+                            logger.error("Failed to pull file '{}' from module '{}'", dir.relativize(file), module);
                         }
                     });
         }

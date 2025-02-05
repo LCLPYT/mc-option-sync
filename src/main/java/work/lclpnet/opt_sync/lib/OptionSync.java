@@ -16,7 +16,7 @@ public class OptionSync {
         this.logger = logger;
     }
 
-    public void bootstrap() {
+    public void pullOptions() {
         try {
             storage.init();
         } catch (IOException e) {
@@ -38,5 +38,13 @@ public class OptionSync {
         }
 
         logger.info("Options are now up-to-date");
+    }
+
+    public void pushOptions() {
+        logger.info("Pushing synced options...");
+
+        // TODO implement
+
+        logger.info("Pushed options successfully");
     }
 }

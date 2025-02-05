@@ -1,6 +1,7 @@
 package work.lclpnet.opt_sync.lib;
 
 import org.semver4j.Semver;
+import work.lclpnet.opt_sync.lib.cfg.ModuleConfig;
 
 import java.nio.file.Path;
 
@@ -23,4 +24,8 @@ public interface Module {
      * @return A semantic version.
      */
     Semver version();
+
+    default ModuleConfig createConfig() {
+        return new ModuleConfig();
+    }
 }
