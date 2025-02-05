@@ -34,13 +34,72 @@ public class OptionStorage {
 
     @Blocking
     public void pull(Module module) throws IOException {
+        logger.debug("Pulling module {}", module);
+
         Path moduleDir = baseDir.resolve(module.modulePath());
         Path dir = moduleDir.resolve(module.version().toString());
 
-        if (Files.exists(dir)) {
-            pullDir(module, dir);
-        } else {
+        if (!Files.exists(dir)) {
             logger.debug("No data to pull for module {}", module);
+            return;
+        }
+
+        syncDir(module, dir, module.filePath());
+    }
+
+    @Blocking
+    public void push(Module module) throws IOException {
+        logger.debug("Pushing module {}", module);
+
+        Path moduleDir = baseDir.resolve(module.modulePath());
+        Path dir = moduleDir.resolve(module.version().toString());
+
+        if (!Files.exists(dir)) {
+            Files.createDirectories(dir);
+        }
+
+        syncDir(module, module.filePath(), dir);
+    }
+
+    private synchronized void syncDir(Module module, Path srcDir, Path dstDir) throws IOException {
+        ModuleConfig config = readModuleConfig(module);
+        FileMatcher matcher = FileMatcher.of(config, logger);
+
+        try (var fileTree = Files.walk(srcDir)) {
+            fileTree.filter(matcher)
+                    .filter(Files::isRegularFile)
+                    .forEach(file -> {
+                        try {
+                            copyFile(srcDir, dstDir, file);
+                        } catch (Exception e) {
+                            logger.error("Failed to sync file '{}' from module '{}'", srcDir.relativize(file), module);
+                        }
+                    });
+        }
+    }
+
+    private void copyFile(Path srcDir, Path dstDir, Path file) throws IOException {
+        Path rel = srcDir.relativize(file);
+        Path target = dstDir.resolve(rel);
+
+        if (file.toAbsolutePath().equals(target.toAbsolutePath())) {
+            throw new IllegalStateException("Source and target files are the same: " + file.toAbsolutePath());
+        }
+
+        Path dir = target.getParent();
+
+        if (dir != null && !Files.exists(dir)) {
+            Files.createDirectories(dir);
+        }
+
+        logger.debug("Copying {} -> {}", file, target);
+
+        try (var srcChannel = FileChannel.open(file, StandardOpenOption.READ);
+             var dstChannel = FileChannel.open(target, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+             FileLock ignored = srcChannel.lock(0, Long.MAX_VALUE, true);
+             FileLock ignored1 = dstChannel.lock()) {
+
+            srcChannel.transferTo(0, srcChannel.size(), dstChannel);
         }
     }
 
@@ -57,49 +116,6 @@ public class OptionStorage {
         } catch (Throwable t) {
             logger.error("Failed to load module config", t);
             return cfg;
-        }
-    }
-
-    @Blocking
-    private void pullDir(Module module, Path dir) throws IOException {
-        ModuleConfig config = readModuleConfig(module);
-        FileMatcher matcher = FileMatcher.of(config, logger);
-
-        try (var fileTree = Files.walk(dir)) {
-            fileTree.filter(matcher)
-                    .filter(Files::isRegularFile)
-                    .forEach(file -> {
-                        try {
-                            pullFile(module, dir, file);
-                        } catch (Exception e) {
-                            logger.error("Failed to pull file '{}' from module '{}'", dir.relativize(file), module);
-                        }
-                    });
-        }
-    }
-
-    private void pullFile(Module module, Path root, Path source) throws IOException {
-        Path rel = root.relativize(source);
-        Path target = module.filePath().resolve(rel);
-
-        if (source.toAbsolutePath().equals(target.toAbsolutePath())) {
-            throw new IllegalStateException("Source and target files are the same: " + source.toAbsolutePath());
-        }
-
-        Path dir = target.getParent();
-
-        if (dir != null && !Files.exists(dir)) {
-            Files.createDirectories(dir);
-        }
-
-        logger.debug("Pulling {} -> {}", source, target);
-
-        try (var srcChannel = FileChannel.open(source, StandardOpenOption.READ);
-             var dstChannel = FileChannel.open(target, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
-             FileLock ignored = srcChannel.lock(0, Long.MAX_VALUE, true);
-             FileLock ignored1 = dstChannel.lock()) {
-
-            srcChannel.transferTo(0, srcChannel.size(), dstChannel);
         }
     }
 

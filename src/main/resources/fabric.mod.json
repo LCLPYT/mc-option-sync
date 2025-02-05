@@ -17,9 +17,14 @@
 	"entrypoints": {
 		"preLaunch": [
 			"work.lclpnet.opt_sync.OptSyncEntrypoint"
+		],
+		"client": [
+			"work.lclpnet.opt_sync.OptSyncClientInit"
 		]
 	},
-	"mixins": [],
+	"mixins": [
+		"mc-option-sync.mixin.json"
+	],
 	"depends": {
 		"fabricloader": ">=0.16.10",
 		"minecraft": "~1.21.4",
