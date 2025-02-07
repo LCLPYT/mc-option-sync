@@ -10,6 +10,7 @@ public class OptionSync {
     private final OptionStorage storage;
     private final ModuleProvider moduleProvider;
     private final Logger logger;
+    private volatile boolean enabled = true;
 
     public OptionSync(OptionStorage storage, ModuleProvider moduleProvider, Logger logger) {
         this.storage = storage;
@@ -17,12 +18,24 @@ public class OptionSync {
         this.logger = logger;
     }
 
-    public void pullOptions() {
+    public synchronized void pullOptions() {
+        if (!enabled) return;
+
         logger.info("Pulling synced options...");
 
         if (initStorage()) return;
 
-        for (Module module : modules()) {
+        var modules = modules();
+
+        var checker = new ConflictChecker(storage, logger);
+
+        if (!checker.check(modules)) {
+            enabled = false;
+            logger.warn("Conflicts detected, disabling options sync...");
+            return;
+        }
+
+        for (Module module : modules) {
             try {
                 storage.pull(module);
             } catch (IOException e) {
@@ -33,7 +46,9 @@ public class OptionSync {
         logger.info("Options are now up-to-date");
     }
 
-    public void pushOptions() {
+    public synchronized void pushOptions() {
+        if (!enabled) return;
+
         logger.info("Pushing synced options...");
 
         if (initStorage()) return;

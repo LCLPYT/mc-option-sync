@@ -12,20 +12,24 @@ import java.util.function.Predicate;
 
 public class FileMatcher implements Predicate<Path> {
 
+    private final Path base;
     private final List<PathMatcher> includes, excludes;
 
-    public FileMatcher(List<PathMatcher> includes, List<PathMatcher> excludes) {
+    public FileMatcher(Path base, List<PathMatcher> includes, List<PathMatcher> excludes) {
+        this.base = base;
         this.includes = includes;
         this.excludes = excludes;
     }
 
     @Override
     public boolean test(Path path) {
-        return includes.stream().anyMatch(m -> m.matches(path))
-                && excludes.stream().noneMatch(m -> m.matches(path));
+        Path rel = base.relativize(path);
+
+        return includes.stream().anyMatch(m -> m.matches(rel))
+                && excludes.stream().noneMatch(m -> m.matches(rel));
     }
 
-    public static FileMatcher of(ModuleConfig config, Logger logger) {
+    public static FileMatcher of(Path base, ModuleConfig config, Logger logger) {
         FileSystem fs = FileSystems.getDefault();
 
         var includes = config.getInclude().stream()
@@ -36,6 +40,6 @@ public class FileMatcher implements Predicate<Path> {
                 .flatMap( pattern -> pattern.asPathMatcher(fs, logger).stream())
                 .toList();
 
-        return new FileMatcher(includes, excludes);
+        return new FileMatcher(base, includes, excludes);
     }
 }

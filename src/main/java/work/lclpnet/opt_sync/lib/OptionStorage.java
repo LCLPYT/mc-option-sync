@@ -12,6 +12,8 @@ import java.nio.channels.FileLock;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static work.lclpnet.opt_sync.OptSyncEntrypoint.MOD_ID;
 
@@ -36,8 +38,7 @@ public class OptionStorage {
     public void pull(Module module) throws IOException {
         logger.debug("Pulling module {}", module);
 
-        Path moduleDir = baseDir.resolve(module.modulePath());
-        Path dir = moduleDir.resolve(module.version().toString());
+        Path dir = moduleVersionDir(module);
 
         if (!Files.exists(dir)) {
             logger.debug("No data to pull for module {}", module);
@@ -51,8 +52,7 @@ public class OptionStorage {
     public void push(Module module) throws IOException {
         logger.debug("Pushing module {}", module);
 
-        Path moduleDir = baseDir.resolve(module.modulePath());
-        Path dir = moduleDir.resolve(module.version().toString());
+        Path dir = moduleVersionDir(module);
 
         if (!Files.exists(dir)) {
             Files.createDirectories(dir);
@@ -61,26 +61,41 @@ public class OptionStorage {
         syncDir(module, module.filePath(), dir);
     }
 
-    private synchronized void syncDir(Module module, Path srcDir, Path dstDir) throws IOException {
-        ModuleConfig config = readModuleConfig(module);
-        FileMatcher matcher = FileMatcher.of(config, logger);
+    @Blocking
+    public boolean anyConflicts(Module module, Path dir) throws IOException {
+        Path moduleDir = moduleVersionDir(module);
 
-        try (var fileTree = Files.walk(srcDir)) {
-            fileTree.filter(matcher)
+        return streamFiles(module, moduleDir, stream ->
+                stream.anyMatch(file -> Files.exists(targetFile(moduleDir, dir, file))));
+    }
+
+    private synchronized void syncDir(Module module, Path srcDir, Path dstDir) throws IOException {
+        streamFiles(module, srcDir, stream -> {
+            stream.forEach(file -> {
+                try {
+                    copyFile(srcDir, dstDir, file);
+                } catch (Exception e) {
+                    logger.error("Failed to sync file '{}' from module '{}'", srcDir.relativize(file), module);
+                }
+            });
+
+            return null;
+        });
+    }
+
+    private <R> R streamFiles(Module module, Path dir, Function<Stream<Path>, R> action) throws IOException {
+        ModuleConfig config = readModuleConfig(module);
+        FileMatcher matcher = FileMatcher.of(dir, config, logger);
+
+        try (var fileTree = Files.walk(dir)) {
+            return action.apply(fileTree
                     .filter(Files::isRegularFile)
-                    .forEach(file -> {
-                        try {
-                            copyFile(srcDir, dstDir, file);
-                        } catch (Exception e) {
-                            logger.error("Failed to sync file '{}' from module '{}'", srcDir.relativize(file), module);
-                        }
-                    });
+                    .filter(matcher));
         }
     }
 
     private void copyFile(Path srcDir, Path dstDir, Path file) throws IOException {
-        Path rel = srcDir.relativize(file);
-        Path target = dstDir.resolve(rel);
+        Path target = targetFile(srcDir, dstDir, file);
 
         if (file.toAbsolutePath().equals(target.toAbsolutePath())) {
             throw new IllegalStateException("Source and target files are the same: " + file.toAbsolutePath());
@@ -117,6 +132,16 @@ public class OptionStorage {
             logger.error("Failed to load module config", t);
             return cfg;
         }
+    }
+
+    private @NotNull Path moduleVersionDir(Module module) {
+        Path moduleDir = baseDir.resolve(module.modulePath());
+        return moduleDir.resolve(module.version().toString());
+    }
+
+    private static @NotNull Path targetFile(Path oldBase, Path newBase, Path file) {
+        Path rel = oldBase.relativize(file);
+        return newBase.resolve(rel);
     }
 
     public static @NotNull Path getDataDir() {
