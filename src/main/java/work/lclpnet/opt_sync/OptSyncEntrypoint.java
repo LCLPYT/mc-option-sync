@@ -21,10 +21,11 @@ public class OptSyncEntrypoint implements PreLaunchEntrypoint {
 	public void onPreLaunch() {
 		if (FabricLoader.getInstance().getEnvironmentType() != EnvType.CLIENT) return;
 
-		var storage = new OptionStorage(OptionStorage.getDataDir(), LOGGER);
-		var moduleProvider = new FabricModuleProvider();
-		var sync = new OptionSync(storage, moduleProvider, LOGGER);
+		var ctx = new FabricSyncContext();
+		var storage = new OptionStorage(OptionStorage.getDataDir(), ctx, LOGGER);
+		var sync = new OptionSync(storage, ctx, LOGGER);
 
+		sync.init();
 		sync.pullOptions();
 
 		optionSync = sync;

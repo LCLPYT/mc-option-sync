@@ -3,11 +3,11 @@ package work.lclpnet.opt_sync.lib;
 import org.jetbrains.annotations.Blocking;
 import org.slf4j.Logger;
 import work.lclpnet.opt_sync.gui.ConflictsGui;
+import work.lclpnet.opt_sync.lib.cfg.SyncConfig;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collection;
 
 public class ConflictChecker {
 
@@ -20,31 +20,22 @@ public class ConflictChecker {
     }
 
     @Blocking
-    public boolean check(Collection<Module> modules) {
+    public boolean check(SyncConfig config) {
         var index = Path.of(".mc-option-sync");
 
-        if (Files.exists(index)) return true;
+        if (Files.exists(index)) return false;
 
         // this is the first startup where no changes were pulled yet
         // check if there are any files that would be overwritten by a pull
 
         Path cwd = Path.of("");
 
-        boolean conflicts = modules.stream().anyMatch(module -> {
-            try {
-                return storage.anyConflicts(module, cwd);
-            } catch (IOException e) {
-                logger.error("Failed to check for file conflicts (assuming there are conflicts just to be safe)", e);
-                return true;
-            }
-        });
-
-        if (!conflicts) {
-            return true;
+        if (!storage.anyPullConflicts(config, cwd)) {
+            return false;
         }
 
-        if (!handleConflicts()) {
-            return false;
+        if (!shouldOverwrite()) {
+            return true;
         }
 
         try {
@@ -53,10 +44,10 @@ public class ConflictChecker {
             logger.error("Failed to create index file {}", index, e);
         }
 
-        return true;
+        return false;
     }
 
-    private boolean handleConflicts() {
+    private boolean shouldOverwrite() {
         logger.info("File conflicts detected on the files to sync. Manual action required...");
 
         boolean shouldOverwrite;
