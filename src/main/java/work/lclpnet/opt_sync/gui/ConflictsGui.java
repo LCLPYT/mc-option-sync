@@ -1,6 +1,5 @@
 package work.lclpnet.opt_sync.gui;
 
-import net.minecraft.client.gui.screen.AccessibilityOnboardingScreen;
 import org.slf4j.Logger;
 
 import javax.imageio.ImageIO;
@@ -82,7 +81,7 @@ public class ConflictsGui {
     }
 
     private BufferedImage readIcon() throws IOException {
-        InputStream in = ConflictsGui.class.getResourceAsStream("/ui/icon/fabric_x128.png");
+        InputStream in = ConflictsGui.class.getResourceAsStream("/assets/mc-option-sync/icon.png");
 
         if (in == null) {
             throw new IllegalStateException("Icon not found");
