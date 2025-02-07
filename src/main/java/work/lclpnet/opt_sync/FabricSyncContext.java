@@ -1,6 +1,7 @@
 package work.lclpnet.opt_sync;
 
 import net.fabricmc.loader.api.FabricLoader;
+import work.lclpnet.opt_sync.lib.Constants;
 import work.lclpnet.opt_sync.lib.SyncContext;
 
 import java.nio.file.Path;
@@ -10,7 +11,7 @@ public class FabricSyncContext implements SyncContext {
 
     @Override
     public Path configDir() {
-        return FabricLoader.getInstance().getConfigDir().resolve(OptSyncEntrypoint.MOD_ID);
+        return FabricLoader.getInstance().getConfigDir().resolve(Constants.MOD_ID);
     }
 
     @Override

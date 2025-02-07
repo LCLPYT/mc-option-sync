@@ -1,7 +1,7 @@
 package work.lclpnet.opt_sync.lib.cfg;
 
 import lombok.Getter;
-import work.lclpnet.opt_sync.OptSyncEntrypoint;
+import work.lclpnet.opt_sync.lib.Constants;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,6 +17,6 @@ public class SyncConfig {
         sync.add(new SyncEntry("servers.dat"));
         sync.add(new SyncEntry("config/**/*.{json,toml,properties,cfg,json5}"));
 
-        ignore.add(new FileRef("config/%s/*".formatted(OptSyncEntrypoint.MOD_ID)));
+        ignore.add(new FileRef("config/%s/*".formatted(Constants.MOD_ID)));
     }
 }
