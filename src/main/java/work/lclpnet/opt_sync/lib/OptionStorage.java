@@ -3,6 +3,7 @@ package work.lclpnet.opt_sync.lib;
 import it.unimi.dsi.fastutil.Pair;
 import org.jetbrains.annotations.Blocking;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import work.lclpnet.opt_sync.lib.cfg.SyncConfig;
 import work.lclpnet.opt_sync.lib.cfg.SyncEntry;
@@ -12,9 +13,11 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.file.*;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static work.lclpnet.opt_sync.OptSyncEntrypoint.MOD_ID;
@@ -96,14 +99,27 @@ public class OptionStorage {
 
         Set<Path> handled = new HashSet<>();
 
-        return config.getSync().stream().flatMap(entry -> {
-            Path srcDir = entryDir(entry).orElse(null);
+        var groupedByModule = config.getSync().stream()
+                .collect(Collectors.groupingBy(entry -> Pair.of(entry.getModule(), entry.getVersion())));
+
+        return groupedByModule.entrySet().stream().flatMap(group -> {
+            var moduleTuple = group.getKey();
+            Path srcDir = entryDir(moduleTuple.first(), moduleTuple.second()).orElse(null);
 
             if (srcDir == null || !Files.isDirectory(srcDir)) return Stream.empty();
 
-            PathMatcher matcher = entry.asFileRef().asPathMatcher(fs, logger).orElse(null);
+            logger.debug("Pulling module {}", baseDir.relativize(srcDir));
 
-            if (matcher == null) return Stream.empty();
+            if (logger.isDebugEnabled()) {
+                logger.debug("Matching files: {}", group.getValue().stream().map(SyncEntry::asFileRef).toList());
+            }
+
+            List<PathMatcher> matchers = group.getValue().stream()
+                    .map(SyncEntry::asFileRef)
+                    .flatMap(fileRef -> fileRef.asPathMatcher(fs, logger).stream())
+                    .toList();
+
+            if (matchers.isEmpty()) return Stream.empty();
 
             try (var stream = Files.walk(srcDir)) {
                 R res = action.apply(stream
@@ -112,7 +128,7 @@ public class OptionStorage {
                         .filter(path -> {
                             Path rel = srcDir.relativize(path);
 
-                            return !ignore.test(rel) && matcher.matches(rel);
+                            return !ignore.test(rel) && matchers.stream().anyMatch(matcher -> matcher.matches(rel));
                         })
                         .filter(handled::add)
                         .map(path -> Pair.of(srcDir, path)));
@@ -160,19 +176,21 @@ public class OptionStorage {
     }
 
     private @NotNull Optional<Path> entryDir(SyncEntry entry) {
-        String module = entry.getModule();
+        return entryDir(entry.getModule(), entry.getVersion());
+    }
 
-        if (module.isBlank()) {
-            logger.error("Module cannot be blank. Entry: {}", entry);
-            return Optional.empty();
-        }
-
-        String version = Optional.ofNullable(entry.getVersion())
+    private @NotNull Optional<Path> entryDir(String module, @Nullable String version) {
+        version = Optional.ofNullable(version)
                 .or(ctx::version)
                 .orElse("unknown");
 
+        if (module.isBlank()) {
+            logger.error("Module cannot be blank");
+            return Optional.empty();
+        }
+
         if (version.isBlank()) {
-            logger.error("Version cannot be blank: Entry: {}, Context version: {}", entry, ctx.version().orElse("<none>"));
+            logger.error("Version cannot be blank. Context version: {}", ctx.version().orElse("<none>"));
             return Optional.empty();
         }
 

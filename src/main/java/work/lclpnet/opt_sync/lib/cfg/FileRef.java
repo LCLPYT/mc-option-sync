@@ -17,4 +17,9 @@ public record FileRef(String file) {
             return Optional.empty();
         }
     }
+
+    @Override
+    public String toString() {
+        return file;
+    }
 }

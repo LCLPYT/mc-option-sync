@@ -39,6 +39,10 @@ public class FileEntryMatcher {
     }
 
     public static FileEntryMatcher of(Path base, SyncConfig config, FileSystem fs, Logger logger) {
+        if (logger.isDebugEnabled()) {
+            logger.debug("Matching files: {}", config.getSync().stream().map(SyncEntry::asFileRef).toList());
+        }
+
         var matchers = config.getSync().stream()
                 .flatMap(entry -> entry.asFileRef().asPathMatcher(fs, logger)
                         .map(matcher -> Pair.of(entry, matcher))
