@@ -31,6 +31,7 @@ public class ConflictChecker {
         Path cwd = Path.of("");
 
         if (!storage.anyPullConflicts(config, cwd)) {
+            createIndex(index);
             return false;
         }
 
@@ -38,13 +39,17 @@ public class ConflictChecker {
             return true;
         }
 
+        createIndex(index);
+
+        return false;
+    }
+
+    private void createIndex(Path index) {
         try {
             Files.createFile(index);
         } catch (IOException e) {
             logger.error("Failed to create index file {}", index, e);
         }
-
-        return false;
     }
 
     private boolean shouldOverwrite() {
