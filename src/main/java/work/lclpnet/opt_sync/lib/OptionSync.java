@@ -1,6 +1,6 @@
 package work.lclpnet.opt_sync.lib;
 
-import org.jetbrains.annotations.NotNull;
+import com.electronwill.nightconfig.core.file.GenericBuilder;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import work.lclpnet.kibu.config.ConfigManager;
@@ -8,7 +8,6 @@ import work.lclpnet.opt_sync.lib.cfg.SyncConfig;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Objects;
 
 public class OptionSync {
 
@@ -30,17 +29,18 @@ public class OptionSync {
         Path configFile = ctx.configDir().resolve("config.toml");
         var config = new SyncConfig();
 
-        try (var cfgManager = new ConfigManager<>(configFile, config)) {
+        try (var cfgManager = new ConfigManager<>(configFile, config, GenericBuilder::sync)) {
             cfgManager.load();
+        } catch (Throwable t) {
+            logger.error("Failed to load config {}", configFile, t);
+            return;
         }
 
         this.config = config;
     }
 
     public synchronized void pullOptions() {
-        if (!enabled) return;
-
-        SyncConfig cfg = requireConfig();
+        if (!enabled || config == null) return;
 
         logger.info("Pulling synced options...");
 
@@ -48,33 +48,27 @@ public class OptionSync {
 
         var checker = new ConflictChecker(storage, logger);
 
-        if (checker.check(cfg)) {
+        if (checker.check(config)) {
             enabled = false;
             logger.warn("Conflicts detected, disabling options sync...");
             return;
         }
 
-        storage.pull(cfg);
+        storage.pull(config);
 
         logger.info("Options are now up-to-date");
     }
 
     public synchronized void pushOptions() {
-        if (!enabled) return;
-
-        SyncConfig cfg = requireConfig();
+        if (!enabled || config == null) return;
 
         logger.info("Pushing synced options...");
 
         if (initStorage()) return;
 
-        storage.push(cfg);
+        storage.push(config);
 
         logger.info("Pushed options successfully");
-    }
-
-    private @NotNull SyncConfig requireConfig() {
-        return Objects.requireNonNull(config, "OptionSync not initialized");
     }
 
     private boolean initStorage() {
