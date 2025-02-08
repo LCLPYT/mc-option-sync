@@ -3,17 +3,18 @@ package work.lclpnet.opt_sync.lib.cfg;
 import com.electronwill.nightconfig.core.serde.annotations.SerdeSkipDeserializingIf;
 import com.electronwill.nightconfig.core.serde.annotations.SerdeSkipSerializingIf;
 import lombok.Getter;
+import lombok.Setter;
 import org.jetbrains.annotations.Nullable;
 
-@Getter
+@Getter @Setter
 public class SyncEntry {
 
-    private final String file;
-    private final String module = "common";
+    private String file;
+    private String module = "common";
 
     @SerdeSkipSerializingIf(SerdeSkipSerializingIf.SkipSerIf.IS_NULL)
     @SerdeSkipDeserializingIf(SerdeSkipDeserializingIf.SkipDeIf.IS_MISSING)
-    private final @Nullable String version = null;
+    private @Nullable String version = null;
 
     @SuppressWarnings("unused")
     private SyncEntry() {

@@ -169,7 +169,7 @@ public class OptionStorage {
 
         Path moduleDir = moduleDir(module).orElse(null);
 
-        if (moduleDir == null) {
+        if (moduleDir == null || !Files.isDirectory(moduleDir)) {
             return Optional.empty();
         }
 
