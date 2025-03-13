@@ -59,12 +59,12 @@ public class OptionStorage {
     }
 
     @Blocking
-    public boolean anyPullConflicts(SyncConfig config, Path dir) {
+    public boolean anyPullConflicts(SyncConfig config) {
         return pull(config, partial -> partial.anyMatch(pair -> {
             Path moduleDir = pair.first();
             Path file = pair.second();
 
-            return Files.exists(targetFile(moduleDir, dir, file));
+            return Files.exists(targetFile(moduleDir, local, file));
         })).anyMatch(Boolean::booleanValue);
     }
 

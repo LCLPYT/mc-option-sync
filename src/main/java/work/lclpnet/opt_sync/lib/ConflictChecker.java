@@ -29,9 +29,7 @@ public class ConflictChecker {
         // this is the first startup where no changes were pulled yet
         // check if there are any files that would be overwritten by a pull
 
-        Path cwd = Path.of("");
-
-        if (!storage.anyPullConflicts(config, cwd)) {
+        if (!storage.anyPullConflicts(config)) {
             createIndex(index);
             return false;
         }

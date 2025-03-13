@@ -48,9 +48,7 @@ class OptionStorageTest {
         copyResourcesTo(local);
         storage.init();
 
-        SyncConfig cfg = emptyCfg();
-        cfg.getSync().add(new SyncEntry("*"));
-        cfg.getSync().add(new SyncEntry("**/*"));
+        SyncConfig cfg = allCfg();
 
         storage.push(cfg);
 
@@ -63,9 +61,7 @@ class OptionStorageTest {
         copyResourcesTo(local);
         storage.init();
 
-        SyncConfig cfg = emptyCfg();
-        cfg.getSync().add(new SyncEntry("*"));
-        cfg.getSync().add(new SyncEntry("**/*"));
+        SyncConfig cfg = allCfg();
         cfg.getIgnore().add(new FileRef("foo.txt"));
 
         storage.push(cfg);
@@ -79,9 +75,7 @@ class OptionStorageTest {
         copyResourcesTo(moduleDir());
         storage.init();
 
-        SyncConfig cfg = emptyCfg();
-        cfg.getSync().add(new SyncEntry("*"));
-        cfg.getSync().add(new SyncEntry("**/*"));
+        SyncConfig cfg = allCfg();
 
         storage.pull(cfg);
 
@@ -89,8 +83,91 @@ class OptionStorageTest {
         assertTrue(exists(local.resolve("dir").resolve("test.md")));
     }
 
+    @Test
+    void pull_new_ignore() throws IOException {
+        copyResourcesTo(moduleDir());
+        storage.init();
+
+        SyncConfig cfg = allCfg();
+        cfg.getIgnore().add(new FileRef("foo.txt"));
+
+        storage.pull(cfg);
+
+        assertFalse(exists(local.resolve("foo.txt")));
+        assertTrue(exists(local.resolve("dir").resolve("test.md")));
+    }
+
+    @Test
+    void pull_notExisting_all() throws IOException {
+        storage.init();
+
+        SyncConfig cfg = allCfg();
+
+        storage.pull(cfg);
+
+        assertFalse(exists(local.resolve("foo.txt")));
+        assertFalse(exists(local.resolve("dir").resolve("test.md")));
+    }
+
+    @Test
+    void pull_olderVersion_all() throws IOException {
+        copyResourcesTo(moduleDir("0.9.0"));
+        storage.init();
+
+        SyncConfig cfg = allCfg();
+
+        storage.pull(cfg);
+
+        assertTrue(exists(local.resolve("foo.txt")));
+        assertTrue(exists(local.resolve("dir").resolve("test.md")));
+    }
+
+    @Test
+    void anyPullConflicts_new_none() throws IOException {
+        copyResourcesTo(moduleDir());
+        storage.init();
+
+        SyncConfig cfg = allCfg();
+
+        assertFalse(storage.anyPullConflicts(cfg));
+    }
+
+    @Test
+    void anyPullConflicts_withAll_exist() throws IOException {
+        copyResourcesTo(local);
+        copyResourcesTo(moduleDir());
+        storage.init();
+
+        SyncConfig cfg = allCfg();
+
+        assertTrue(storage.anyPullConflicts(cfg));
+    }
+
+    @Test
+    void anyPullConflicts_withOne_exist() throws IOException {
+        copyResourcesTo(moduleDir());
+        storage.init();
+
+        Files.writeString(local.resolve("foo.txt"), "hello");
+
+        SyncConfig cfg = allCfg();
+
+        assertTrue(storage.anyPullConflicts(cfg));
+    }
+
     private @NotNull Path moduleDir() {
+        return moduleDir(version);
+    }
+
+    private @NotNull Path moduleDir(String version) {
         return remote.resolve("common").resolve(version);
+    }
+
+    private @NotNull SyncConfig allCfg() {
+        SyncConfig cfg = emptyCfg();
+        cfg.getSync().add(new SyncEntry("*"));
+        cfg.getSync().add(new SyncEntry("**/*"));
+        return cfg;
     }
 
     private @NotNull SyncConfig emptyCfg() {
