@@ -22,32 +22,35 @@ import static work.lclpnet.opt_sync.lib.Constants.MOD_ID;
 
 public class OptionStorage {
 
-    private final Path baseDir;
+    private final Path local, remote;
     private final SyncContext ctx;
     private final Logger logger;
 
-    public OptionStorage(Path baseDir, SyncContext ctx, Logger logger) {
-        this.baseDir = baseDir;
+    public OptionStorage(Path remote, SyncContext ctx, Logger logger) {
+        this(Path.of(""), remote, ctx, logger);
+    }
+
+    public OptionStorage(Path local, Path remote, SyncContext ctx, Logger logger) {
+        this.local = local;
+        this.remote = remote;
         this.ctx = ctx;
         this.logger = logger;
     }
 
     @Blocking
     public void init() throws IOException {
-        if (Files.exists(baseDir)) return;
+        if (Files.exists(remote)) return;
 
-        Files.createDirectories(baseDir);
+        Files.createDirectories(remote);
     }
 
     @Blocking
     public void pull(SyncConfig config) {
-        Path dstDir = cwd();
-
         boolean success = pull(config, partial -> partial.allMatch(pair -> {
             Path srcDir = pair.first();
             Path file = pair.second();
 
-            return handleCopy(srcDir, dstDir, file);
+            return handleCopy(srcDir, local, file);
         })).allMatch(Boolean::booleanValue);
 
         if (!success) {
@@ -67,11 +70,9 @@ public class OptionStorage {
 
     @Blocking
     public void push(SyncConfig config) {
-        Path srcDir = cwd();
+        FileEntryMatcher matcher = FileEntryMatcher.of(local, config, FileSystems.getDefault(), logger);
 
-        FileEntryMatcher matcher = FileEntryMatcher.of(srcDir, config, FileSystems.getDefault(), logger);
-
-        try (var stream = Files.walk(srcDir)) {
+        try (var stream = Files.walk(local)) {
             stream.filter(Files::isRegularFile)
                     .flatMap(path -> matcher.entryOf(path)
                             .map(entry -> Pair.of(path, entry))
@@ -84,10 +85,10 @@ public class OptionStorage {
 
                         Path file = pair.first();
 
-                        handleCopy(srcDir, dstDir, file);
+                        handleCopy(local, dstDir, file);
                     });
         } catch (IOException e) {
-            logger.error("Failed to walk file tree {}", srcDir, e);
+            logger.error("Failed to walk file tree {}", local, e);
         }
     }
 
@@ -109,24 +110,24 @@ public class OptionStorage {
             }
 
             if (!Files.isDirectory(srcDir)) {
-                logger.info("Module {} doesn't exist yet, trying to find an older version...", baseDir.relativize(srcDir));
+                logger.info("Module {} doesn't exist yet, trying to find an older version...", remote.relativize(srcDir));
 
                 // try to find older version of the module
                 var olderSrc = findOlderSrc(moduleTuple.first(), moduleTuple.second());
 
                 if (olderSrc.isEmpty()) {
-                    logger.info("No older version was found for module {}, skipping", baseDir.relativize(srcDir));
+                    logger.info("No older version was found for module {}, skipping", remote.relativize(srcDir));
                     return Stream.empty();
                 }
 
-                logger.info("Using closest older version: {} -> {}", baseDir.relativize(olderSrc.get()), baseDir.relativize(srcDir));
+                logger.info("Using closest older version: {} -> {}", remote.relativize(olderSrc.get()), remote.relativize(srcDir));
 
                 srcDir = olderSrc.get();
             }
 
             Path finalSrcDir = srcDir;
 
-            logger.debug("Pulling module {}", baseDir.relativize(finalSrcDir));
+            logger.debug("Pulling module {}", remote.relativize(finalSrcDir));
 
             if (logger.isDebugEnabled()) {
                 logger.debug("Matching files: {}", group.getValue().stream().map(SyncEntry::asFileRef).toList());
@@ -242,7 +243,7 @@ public class OptionStorage {
             return Optional.empty();
         }
 
-        return Optional.of(baseDir.resolve(module));
+        return Optional.of(remote.resolve(module));
     }
 
     private @NotNull String versionWithContext(@Nullable String version) {
@@ -251,10 +252,6 @@ public class OptionStorage {
                 .or(ctx::version)
                 .filter(v -> !v.isBlank())
                 .orElse("unknown");
-    }
-
-    private static @NotNull Path cwd() {
-        return Path.of("");
     }
 
     private static @NotNull Path targetFile(Path oldBase, Path newBase, Path file) {
