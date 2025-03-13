@@ -2,7 +2,6 @@ package work.lclpnet.opt_sync.lib;
 
 import org.jetbrains.annotations.Blocking;
 import org.slf4j.Logger;
-import work.lclpnet.opt_sync.gui.ConflictsGui;
 import work.lclpnet.opt_sync.lib.cfg.SyncConfig;
 
 import java.io.IOException;
@@ -12,10 +11,12 @@ import java.nio.file.Path;
 public class ConflictChecker {
 
     private final OptionStorage storage;
+    private final ConflictHandler handler;
     private final Logger logger;
 
-    public ConflictChecker(OptionStorage storage, Logger logger) {
+    public ConflictChecker(OptionStorage storage, ConflictHandler handler, Logger logger) {
         this.storage = storage;
+        this.handler = handler;
         this.logger = logger;
     }
 
@@ -55,14 +56,7 @@ public class ConflictChecker {
     private boolean shouldOverwrite() {
         logger.info("File conflicts detected on the files to sync. Manual action required...");
 
-        boolean shouldOverwrite;
-
-        try {
-            shouldOverwrite = new ConflictsGui(logger).awaitResponse();
-        } catch (Exception e) {
-            logger.error("Failed to get user response via the gui (selecting keep)", e);
-            return false;
-        }
+        boolean shouldOverwrite = handler.shouldOverwrite();
 
         if (shouldOverwrite) {
             logger.info("The user requested to overwrite conflicting files of this Minecraft instance");

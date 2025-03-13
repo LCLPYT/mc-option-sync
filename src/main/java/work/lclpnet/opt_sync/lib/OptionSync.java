@@ -13,13 +13,15 @@ public class OptionSync {
 
     private final OptionStorage storage;
     private final SyncContext ctx;
+    private final ConflictHandler conflictHandler;
     private final Logger logger;
     private volatile @Nullable SyncConfig config = null;
     private volatile boolean enabled = true;
 
-    public OptionSync(OptionStorage storage, SyncContext ctx, Logger logger) {
+    public OptionSync(OptionStorage storage, SyncContext ctx, ConflictHandler conflictHandler, Logger logger) {
         this.storage = storage;
         this.ctx = ctx;
+        this.conflictHandler = conflictHandler;
         this.logger = logger;
     }
 
@@ -46,7 +48,7 @@ public class OptionSync {
 
         if (initStorage()) return;
 
-        var checker = new ConflictChecker(storage, logger);
+        var checker = new ConflictChecker(storage, conflictHandler, logger);
 
         if (checker.check(config)) {
             enabled = false;

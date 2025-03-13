@@ -1,0 +1,7 @@
+{
+  "mc-option-sync.conflict": "Synchronisierungskonflikt",
+  "mc-option-sync.conflict.detected": "Synchronisierungskonflikte erkannt",
+  "mc-option-sync.conflict.detail": "%s hat unterschiedliche Versionen der zu synchronisierenden Dateien gefunden.\nMöchtest du die Optionen der aktuellen Minecraft-Instanz überschreiben?",
+  "mc-option-sync.conflict.overwrite": "Überschreiben",
+  "mc-option-sync.conflict.keep": "Behalten"
+}

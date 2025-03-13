@@ -1,0 +1,7 @@
+{
+  "mc-option-sync.conflict": "Sync Conflict",
+  "mc-option-sync.conflict.detected": "Sync conflicts detected",
+  "mc-option-sync.conflict.detail": "%s found different versions of files to sync.\nWould you like to overwrite the options of the current Minecraft instance?",
+  "mc-option-sync.conflict.overwrite": "Overwrite",
+  "mc-option-sync.conflict.keep": "Keep"
+}

@@ -1,6 +1,8 @@
 package work.lclpnet.opt_sync.gui;
 
 import org.slf4j.Logger;
+import work.lclpnet.opt_sync.lib.ConflictHandler;
+import work.lclpnet.opt_sync.lib.Constants;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -12,13 +14,25 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.CountDownLatch;
 
-public class ConflictsGui {
+public class ConflictsGui implements ConflictHandler {
 
+    private final Translator translator;
     private final Logger logger;
     private boolean shouldOverwrite = false;
 
-    public ConflictsGui(Logger logger) {
+    public ConflictsGui(Translator translator, Logger logger) {
+        this.translator = translator;
         this.logger = logger;
+    }
+
+    @Override
+    public boolean shouldOverwrite() {
+        try {
+            return awaitResponse();
+        } catch (Exception e) {
+            logger.error("Failed to get user response via the gui (selecting keep)", e);
+            return false;
+        }
     }
 
     public boolean awaitResponse() throws Exception {
@@ -26,8 +40,7 @@ public class ConflictsGui {
             throw new HeadlessException();
         }
 
-        // TODO translate
-        String title = "Sync conflicts detected - mc-option-sync";
+        String title = translator.translate("mc-option-sync.conflict.detected") + " - " + Constants.MOD_ID;
 
         System.setProperty("apple.awt.application.appearance", "system");
         System.setProperty("apple.awt.application.name", title);
@@ -100,18 +113,20 @@ public class ConflictsGui {
 
         var text = new JLabel("""
                 <html>
-                  <h1>Sync Conflict</h1>
-                  mc-option-sync found different versions of files to sync.<br>
-                  Would you like to overwrite the options of the current Minecraft instance?
-                </html>""");
+                  <h1>%s</h1>
+                  %s
+                </html>""".formatted(
+                translator.translate("mc-option-sync.conflict"),
+                translator.translate("mc-option-sync.conflict.detail", Constants.MOD_ID).replaceAll("\n", "<br>")
+        ));
 
         text.setHorizontalAlignment(SwingConstants.CENTER);
         text.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
         content.add(text);
 
         var btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
-        var overwriteBtn = new JButton("Overwrite");
-        var keepBtn = new JButton("Keep");
+        var overwriteBtn = new JButton(translator.translate("mc-option-sync.conflict.overwrite"));
+        var keepBtn = new JButton(translator.translate("mc-option-sync.conflict.keep"));
 
         overwriteBtn.setBackground(new Color(0x994343));
         overwriteBtn.setOpaque(true);
@@ -132,5 +147,9 @@ public class ConflictsGui {
             shouldOverwrite = true;
             frame.dispose();
         });
+    }
+
+    public interface Translator {
+        String translate(String key, Object... args);
     }
 }
