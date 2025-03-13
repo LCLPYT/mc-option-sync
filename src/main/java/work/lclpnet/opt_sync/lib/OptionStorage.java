@@ -18,6 +18,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.nio.file.StandardOpenOption.*;
 import static work.lclpnet.opt_sync.lib.Constants.MOD_ID;
 
 public class OptionStorage {
@@ -45,7 +46,7 @@ public class OptionStorage {
     }
 
     @Blocking
-    public void pull(SyncConfig config) {
+    public synchronized void pull(SyncConfig config) {
         boolean success = pull(config, partial -> partial.allMatch(pair -> {
             Path srcDir = pair.first();
             Path file = pair.second();
@@ -59,7 +60,7 @@ public class OptionStorage {
     }
 
     @Blocking
-    public boolean anyPullConflicts(SyncConfig config) {
+    public synchronized boolean anyPullConflicts(SyncConfig config) {
         return pull(config, partial -> partial.anyMatch(pair -> {
             Path moduleDir = pair.first();
             Path file = pair.second();
@@ -69,7 +70,7 @@ public class OptionStorage {
     }
 
     @Blocking
-    public void push(SyncConfig config) {
+    public synchronized void push(SyncConfig config) {
         FileEntryMatcher matcher = FileEntryMatcher.of(local, config, FileSystems.getDefault(), logger);
 
         try (var stream = Files.walk(local)) {
@@ -195,7 +196,7 @@ public class OptionStorage {
             copyFile(srcDir, dstDir, file);
             return true;
         } catch (Exception e) {
-            logger.error("Failed to sync file '{}' from '{}' into '{}'", dstDir.relativize(file), srcDir, dstDir);
+            logger.error("Failed to sync file '{}' from '{}' into '{}'", srcDir.relativize(file), srcDir, dstDir);
             return false;
         }
     }
@@ -215,8 +216,8 @@ public class OptionStorage {
 
         logger.debug("Copying {} -> {}", file, target);
 
-        try (var srcChannel = FileChannel.open(file, StandardOpenOption.READ);
-             var dstChannel = FileChannel.open(target, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+        try (var srcChannel = FileChannel.open(file, READ);
+             var dstChannel = FileChannel.open(target, WRITE, CREATE, TRUNCATE_EXISTING);
              FileLock ignored = srcChannel.lock(0, Long.MAX_VALUE, true);
              FileLock ignored1 = dstChannel.lock()) {
 

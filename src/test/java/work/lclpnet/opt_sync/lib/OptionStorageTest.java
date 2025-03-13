@@ -70,6 +70,44 @@ class OptionStorageTest {
     }
 
     @Test
+    void push_updated_overwritten() throws IOException {
+        storage.init();
+
+        Files.createDirectories(moduleDir());
+
+        Path remotePath = moduleDir().resolve("test.txt");
+        Files.writeString(remotePath, "Foo");
+        Files.writeString(local.resolve("test.txt"), "Bar");
+
+        SyncConfig cfg = allCfg();
+
+        assertEquals("Foo", Files.readString(remotePath));
+
+        storage.push(cfg);
+
+        assertEquals("Bar", Files.readString(remotePath));
+    }
+
+    @Test
+    void push_updatedSmallerContent_overwritten() throws IOException {
+        storage.init();
+
+        Files.createDirectories(moduleDir());
+
+        Path remotePath = moduleDir().resolve("test.txt");
+        Files.writeString(remotePath, "Foo Bar Test 123");
+        Files.writeString(local.resolve("test.txt"), "Bar");
+
+        SyncConfig cfg = allCfg();
+
+        assertEquals("Foo Bar Test 123", Files.readString(remotePath));
+
+        storage.push(cfg);
+
+        assertEquals("Bar", Files.readString(remotePath));
+    }
+
+    @Test
     void pull_new_all() throws IOException {
         copyResourcesTo(moduleDir());
         storage.init();
