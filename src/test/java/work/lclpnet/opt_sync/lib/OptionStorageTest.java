@@ -16,8 +16,7 @@ import java.nio.file.Path;
 import java.util.Optional;
 
 import static java.nio.file.Files.exists;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class OptionStorageTest {
 
@@ -120,6 +119,24 @@ class OptionStorageTest {
 
         assertTrue(exists(local.resolve("foo.txt")));
         assertTrue(exists(local.resolve("dir").resolve("test.md")));
+    }
+
+    @Test
+    void pull_olderVersions_closest() throws IOException {
+        copyResourcesTo(moduleDir("0.9.0"));
+        copyResourcesTo(moduleDir("0.8.5"));
+        storage.init();
+
+        Files.writeString(moduleDir("0.9.0").resolve("foo.txt"), "abc123");
+
+        SyncConfig cfg = allCfg();
+
+        storage.pull(cfg);
+
+        assertTrue(exists(local.resolve("foo.txt")));
+        assertTrue(exists(local.resolve("dir").resolve("test.md")));
+
+        assertEquals("abc123", Files.readString(local.resolve("foo.txt")));
     }
 
     @Test
