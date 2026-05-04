@@ -23,7 +23,7 @@
 		]
 	},
 	"mixins": [
-		"mc-option-sync.mixin.json"
+		"mc-option-sync.mixins.json"
 	],
 	"depends": {
 		"fabricloader": ">=${loader_version}",
