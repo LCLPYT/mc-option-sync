@@ -1,0 +1,31 @@
+[versions]
+minecraft = "26.1.2"
+fabric-api = "0.147.0+26.1.2"
+fabric-loader = "0.19.2"
+fabric-loom = "1.16-SNAPSHOT"
+gradle-build-tools = "1.7.0"
+java = "25"
+lombok = "9.4.0"
+kibu-translation-api = "0.26.0+26.1"
+kibu-config-api = "0.1.1"
+semver4j = "5.6.0"
+night-config = "3.8.1"
+junit = "5.9.2"
+
+[plugins]
+fabric-loom = { id = "net.fabricmc.fabric-loom", version.ref = "fabric-loom" }
+maven-publish = { id = "maven-publish" }
+gradle-build-utils = { id = "gradle-build-utils", version.ref = "gradle-build-tools" }
+lombok = { id = "io.freefair.lombok", version.ref = "lombok" }
+
+[libraries]
+minecraft = { module = "com.mojang:minecraft", version.ref = "minecraft" }
+fabric-api = { module = "net.fabricmc.fabric-api:fabric-api", version.ref = "fabric-api" }
+fabric-loader = { module = "net.fabricmc:fabric-loader", version.ref = "fabric-loader" }
+kibu-translation-api = { module = "work.lclpnet.mods.kibu:kibu-translation-api", version.ref = "kibu-translation-api" }
+kibu-config-api = { module = "work.lclpnet.mods.kibu:kibu-config-api", version.ref = "kibu-config-api" }
+semver4j = { module = "org.semver4j:semver4j", version.ref = "semver4j" }
+night-config-core = { module = "com.electronwill.night-config:core", version.ref = "night-config" }
+night-config-toml = { module = "com.electronwill.night-config:toml", version.ref = "night-config" }
+junit-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
+junit-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }

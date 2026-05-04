@@ -1,22 +1,24 @@
+import org.apache.tools.ant.filters.ReplaceTokens
 import work.lclpnet.build.task.GithubDeploymentTask
 
 plugins {
-    id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
-    id 'maven-publish'
-    id 'gradle-build-utils' version '1.7.0'
-    id 'io.freefair.lombok' version '8.11'
+    alias(libs.plugins.fabric.loom)
+    alias(libs.plugins.maven.publish)
+    alias(libs.plugins.gradle.build.utils)
+    alias(libs.plugins.lombok)
 }
 
 Properties props = buildUtils.loadProperties('publish.properties')
 
 group = project.maven_group
-version = "${project.mod_version}+${project.minecraft_version}"
+version = "${project.mod_version}+${libs.versions.minecraft.get()}"
+
+def modId = project.mod_id
+def javaVersion = libs.versions.java.get().toInteger()
 
 base {
-    archivesName = project.archives_base_name
+    archivesName = modId
 }
-
-int javaVersion = Integer.parseInt(project.java_version)
 
 repositories {
     maven {
@@ -31,20 +33,23 @@ loom {
 }
 
 dependencies {
-    minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    mappings loom.officialMojangMappings()
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    minecraft(libs.minecraft)
+    implementation(libs.fabric.loader)
+    implementation(libs.fabric.api)
 
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-    include(modImplementation("work.lclpnet.mods.kibu:kibu-translation-api:${project.kibu_translation_api_version}"))
-    include(modImplementation("work.lclpnet.mods.kibu:kibu-config-api:${project.kibu_config_api_version}"))
+    def includeImpl = { dep ->
+        implementation(dep)
+        include(dep)
+    }
 
-    include(implementation('org.semver4j:semver4j:5.6.0'))
-    include(implementation('com.electronwill.night-config:core:3.8.1'))
-    include(implementation('com.electronwill.night-config:toml:3.8.1'))
+    includeImpl(libs.kibu.translation.api)
+    includeImpl(libs.kibu.config.api)
+    includeImpl(libs.semver4j)
+    includeImpl(libs.night.config.core)
+    includeImpl(libs.night.config.toml)
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.2'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.2'
+    testImplementation(libs.junit.api)
+    testRuntimeOnly(libs.junit.engine)
 }
 
 test {
@@ -52,17 +57,22 @@ test {
 }
 
 processResources {
-	inputs.property "version", project.version
-    inputs.property "loader_version", project.loader_version
-    inputs.property "minecraft_compat", project.minecraft_compat
-    inputs.property "java_version", project.java_version
+    def tokens = [
+            "version": project.version.toString(),
+            "loader_version": libs.versions.fabric.loader.get(),
+            "minecraft_compat": project.minecraft_compat,
+            "java_version": javaVersion.toString()
+    ]
 
-	filesMatching("fabric.mod.json") {
-		expand "version": project.version,
-                "loader_version": project.loader_version,
-                "minecraft_compat": project.minecraft_compat,
-                "java_version": project.java_version
-	}
+    it.inputs.properties(tokens)
+
+    it.filesMatching("fabric.mod.json") {
+        expand(tokens)
+    }
+
+    it.filesMatching("*.mixins.json") {
+        filter(ReplaceTokens, beginToken: '${', endToken: '}', tokens: tokens)
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -86,7 +96,7 @@ java {
 def env = System.getenv()
 
 tasks.register("github", GithubDeploymentTask) {
-    dependsOn tasks.remapJar
+    dependsOn tasks.jar
 
     config {
         token = env.get("GITHUB_TOKEN")
@@ -94,11 +104,11 @@ tasks.register("github", GithubDeploymentTask) {
     }
 
     release {
-        title = "[$project.minecraft_version] $project.name $project.version"
+        title = "[${libs.versions.minecraft.get()}] $project.name $project.version"
         tag = project.version
     }
 
-    assets.add(tasks.remapJar.archiveFile.get())
+    assets.add(tasks.jar.archiveFile.get())
 }
 
 // configure the maven publication
