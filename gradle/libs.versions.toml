@@ -11,6 +11,7 @@ kibu-config-api = "0.1.1"
 semver4j = "5.6.0"
 night-config = "3.8.1"
 junit = "5.9.2"
+junit-platform = "1.9.2"
 
 [plugins]
 fabric-loom = { id = "net.fabricmc.fabric-loom", version.ref = "fabric-loom" }
@@ -29,3 +30,4 @@ night-config-core = { module = "com.electronwill.night-config:core", version.ref
 night-config-toml = { module = "com.electronwill.night-config:toml", version.ref = "night-config" }
 junit-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
 junit-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit-platform" }
