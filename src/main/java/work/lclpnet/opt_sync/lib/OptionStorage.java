@@ -250,7 +250,7 @@ public class OptionStorage {
     private @NotNull String versionWithContext(@Nullable String version) {
         return Optional.ofNullable(version)
                 .filter(v -> !v.isBlank())
-                .or(ctx::version)
+                .or(() -> ctx.version().map(VersionUtil::getFlexibleSemver))
                 .filter(v -> !v.isBlank())
                 .orElse("unknown");
     }
